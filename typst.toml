@@ -1,0 +1,13 @@
+[package]
+name = "touying-sdu"
+version = "0.1.0"
+entrypoint = "lib.typ"
+authors = ["Codex", "asus"]
+license = "MIT"
+description = "Shandong University Touying slide theme."
+keywords = ["touying", "slide", "sdu"]
+categories = ["presentation"]
+
+[template]
+path = "template"
+entrypoint = "exp.typ"
