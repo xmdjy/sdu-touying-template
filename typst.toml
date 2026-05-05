@@ -1,8 +1,8 @@
 [package]
-name = "touying-sdu"
+name = "sdu-touying-template"
 version = "0.1.0"
 entrypoint = "lib.typ"
-authors = ["Codex", "asus"]
+authors = ["xmdjy" , "Codex"]
 license = "MIT"
 description = "Shandong University Touying slide theme."
 keywords = ["touying", "slide", "sdu"]

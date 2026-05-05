@@ -245,7 +245,18 @@
 
 #let sdu-theme(
   aspect-ratio: "16-9",
-  font: ("Libertinus Serif", "KaiTi"),
+  font: (
+    "Libertinus Serif",
+    "Times New Roman",
+    "KaiTi",
+    "Kaiti SC",
+    "STKaiti",
+    "AR PL UKai CN",
+    "Noto Serif CJK SC",
+    "Source Han Serif SC",
+    "Songti SC",
+    "SimSun",
+  ),
   footer-right: context touyingpkg.utils.slide-counter.display() + " / " + touyingpkg.utils.last-slide-number,
   primary: rgb("#8C1D1D"),
   ..args,
