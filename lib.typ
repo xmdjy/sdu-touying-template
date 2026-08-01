@@ -7,7 +7,120 @@
 #import "@preview/pinit:0.2.2": *
 #import "@preview/cuti:0.4.0": show-cn-fakebold, show-cn-fakeitalic
 
-#let sdu-content-top-gap = 1.5em
+#let sdu-content-top-gap = 1.0em
+#let sdu-equation-lines-per-page = 5
+#let sdu-equation-row-gap = 2.25em
+#let sdu-equation-body-gap = 1.75em
+
+// Typst lays out a multiline block equation as one unbreakable object. On a
+// slide, a tall equation can therefore run past the page and lose its trailing
+// lines. Split only top-level math line breaks into grid rows so the equation
+// can continue on the next page. The first explicit alignment point (`&`) is
+// respected; when it is omitted, the first `=` on each row is used instead.
+#let _sdu-equation-rows(body) = {
+  let children = if body.has("children") { body.children } else { (body,) }
+  let rows = ()
+  let row = ()
+
+  for child in children {
+    if child.func() == linebreak {
+      rows.push(row)
+      row = ()
+    } else {
+      row.push(child)
+    }
+  }
+  rows.push(row)
+  rows
+}
+
+#let _sdu-equation-alignment(row) = {
+  let explicit = row.position(child => repr(child) == "align-point()")
+  if explicit != none {
+    return (explicit, explicit + 1)
+  }
+
+  let equality = row.position(child => child.has("text") and child.text == "=")
+  if equality != none {
+    (equality, equality)
+  } else {
+    none
+  }
+}
+
+#let _sdu-row-equation(children) = math.equation(
+  block: false,
+  // A split row is technically inline content, so explicitly restore the
+  // display style used by a normal `$ ... $` block equation.
+  math.display(children.sum(default: none)),
+)
+
+#let _sdu-display-equation(equation) = {
+  let rows = _sdu-equation-rows(equation.body)
+
+  if rows.len() == 1 {
+    // Keep Typst's native layout for ordinary one-line display equations.
+    align(center, equation)
+  } else {
+    let parsed = rows.map(row => {
+      let alignment = _sdu-equation-alignment(row)
+      if alignment == none {
+        (body: row, left: none, right: none)
+      } else {
+        let (left-end, right-start) = alignment
+        (
+          body: row,
+          left: row.slice(0, left-end),
+          right: row.slice(right-start),
+        )
+      }
+    })
+
+    let chunks = ()
+    let chunk = ()
+    for row in parsed {
+      chunk.push(row)
+      if chunk.len() == sdu-equation-lines-per-page {
+        chunks.push(chunk)
+        chunk = ()
+      }
+    }
+    if chunk.len() > 0 { chunks.push(chunk) }
+
+    // Each small chunk is indivisible, so Typst either keeps it in the
+    // remaining slide area or moves the complete chunk below the next page's
+    // header. Longer derivations are split at deterministic row boundaries.
+    for (chunk-index, chunk) in chunks.enumerate() {
+      block(
+        width: 100%,
+        breakable: false,
+        above: sdu-equation-body-gap,
+        below: if chunk-index == chunks.len() - 1 { sdu-equation-body-gap } else { 0pt },
+        for (row-index, row) in chunk.enumerate() {
+          block(
+            width: 100%,
+            breakable: false,
+            below: if row-index == chunk.len() - 1 { 0pt } else { sdu-equation-row-gap },
+            if row.left == none {
+              align(center, _sdu-row-equation(row.body))
+            } else {
+              grid(
+                // Keep one shared alignment axis while leaving enough room
+                // for the usually longer right-hand side of derivations.
+                columns: (40%, 60%),
+                column-gutter: 0pt,
+                // Horizontal alignment only: `horizon` would collapse the
+                // row height for fractions, products, and large sums.
+                align(right, _sdu-row-equation(row.left)),
+                align(left, _sdu-row-equation(row.right)),
+              )
+            },
+          )
+        },
+      )
+    }
+  }
+}
 
 #let _get-last-heading-label(current-headings) = {
   if current-headings != () and current-headings.at(-1).has("label") {
@@ -76,7 +189,11 @@
     repeat: repeat,
     setting: body => {
       set page(background: _sdu-background(self))
-      pad(top: sdu-content-top-gap, setting(body))
+      // Keep the slide body in the normal page flow. A wrapping `pad` loses
+      // the page's top margin when it fragments, causing continuation content
+      // to overlap the header and footer.
+      v(sdu-content-top-gap)
+      setting(body)
     },
     composer: composer,
     ..bodies,
@@ -283,6 +400,7 @@
         show: show-cn-fakebold
         show: show-cn-fakeitalic
         show heading: set text(self.colors.primary)
+        show math.equation.where(block: true): _sdu-display-equation
         codly(languages: codly-languages)
         body
       },

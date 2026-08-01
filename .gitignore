@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Typst caches and temporary files
+.typst/
+*.typst.tmp
+
+# Logs
+*.log
+
+/source/
+/workspace/
