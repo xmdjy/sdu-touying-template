@@ -55,12 +55,19 @@
   math.display(children.sum(default: none)),
 )
 
+// Preserve the normal display-math size whenever the row fits. Only shrink a
+// row when its natural width would otherwise run outside the slide.
+#let _sdu-fit-equation(body) = touyingpkg.utils.fit-to-width(
+  grow: false,
+  100%,
+  body,
+)
+
 #let _sdu-display-equation(equation) = {
   let rows = _sdu-equation-rows(equation.body)
 
   if rows.len() == 1 {
-    // Keep Typst's native layout for ordinary one-line display equations.
-    align(center, equation)
+    align(center, _sdu-fit-equation(equation))
   } else {
     let parsed = rows.map(row => {
       let alignment = _sdu-equation-alignment(row)
@@ -75,6 +82,7 @@
         )
       }
     })
+    let aligned-row-count = parsed.filter(row => row.left != none).len()
 
     let chunks = ()
     let chunk = ()
@@ -94,28 +102,42 @@
       block(
         width: 100%,
         breakable: false,
-        above: sdu-equation-body-gap,
-        below: if chunk-index == chunks.len() - 1 { sdu-equation-body-gap } else { 0pt },
-        for (row-index, row) in chunk.enumerate() {
-          block(
-            width: 100%,
-            breakable: false,
-            below: if row-index == chunk.len() - 1 { 0pt } else { sdu-equation-row-gap },
-            if row.left == none {
-              align(center, _sdu-row-equation(row.body))
-            } else {
-              grid(
-                // Keep one shared alignment axis while leaving enough room
-                // for the usually longer right-hand side of derivations.
-                columns: (40%, 60%),
-                column-gutter: 0pt,
-                // Horizontal alignment only: `horizon` would collapse the
-                // row height for fractions, products, and large sums.
-                align(right, _sdu-row-equation(row.left)),
-                align(left, _sdu-row-equation(row.right)),
-              )
-            },
-          )
+        // Put the gap inside the indivisible block. An `above` gap can be
+        // discarded at the top of a page, which lets tall fractions and
+        // brackets collide with the header rule.
+        above: 0pt,
+        below: 0pt,
+        {
+          v(sdu-equation-body-gap)
+          for (row-index, row) in chunk.enumerate() {
+            block(
+              width: 100%,
+              breakable: false,
+              below: if row-index == chunk.len() - 1 { 0pt } else { sdu-equation-row-gap },
+              if row.left == none {
+                align(center, _sdu-fit-equation(_sdu-row-equation(row.body)))
+              } else if aligned-row-count == 1 {
+                // With no second equality to align against, keep the expression
+                // as one unit. This gives a long RHS the full slide width and
+                // scales both sides by exactly the same amount.
+                align(center, _sdu-fit-equation(_sdu-row-equation(row.body)))
+              } else {
+                grid(
+                  // Keep one shared alignment axis while leaving enough room
+                  // for the usually longer right-hand side of derivations.
+                  columns: (40%, 60%),
+                  column-gutter: 0pt,
+                  // Horizontal alignment only: `horizon` would collapse the
+                  // row height for fractions, products, and large sums.
+                  align(right, _sdu-fit-equation(_sdu-row-equation(row.left))),
+                  align(left, _sdu-fit-equation(_sdu-row-equation(row.right))),
+                )
+              },
+            )
+          }
+          if chunk-index == chunks.len() - 1 {
+            v(sdu-equation-body-gap)
+          }
         },
       )
     }
@@ -400,6 +422,13 @@
         show: show-cn-fakebold
         show: show-cn-fakeitalic
         show heading: set text(self.colors.primary)
+        show link: set text(fill: blue)
+        show raw.where(block: false): code => box(
+          fill: rgb("#eff1f3"),
+          inset: (x: 0.35em, y: 0.15em),
+          radius: 0.2em,
+          text(size: 0.85em, fill: rgb("#24292f"), code),
+        )
         show math.equation.where(block: true): _sdu-display-equation
         codly(languages: codly-languages)
         body

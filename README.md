@@ -28,7 +28,7 @@ cd sdu-touying-template
   subtitle: [副标题],
   author: [作者],
   institution: [单位],
-  date: datetime.today(), //时间，这里默认用当天时间
+  date: datetime.today(),
 ))
 
 #title-slide()
