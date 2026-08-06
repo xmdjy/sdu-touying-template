@@ -158,6 +158,40 @@
   )
 }
 
+// Typst turns ordered-list items separated by other block content into
+// independent lists, so each fragment normally starts at 1. Give top-level
+// items explicit numbers within each second-level heading. Nested items remain
+// local to their parent list, and an explicitly numbered item is preserved.
+#let _sdu-continue-enums(body) = {
+  let children = if touyingpkg.utils.is-sequence(body) { body.children } else { (body,) }
+  let in-subsection = false
+  let next-number = 1
+  let result = ()
+
+  for child in children {
+    if type(child) == content and child.func() == heading and child.depth <= 2 {
+      in-subsection = child.depth == 2
+      next-number = 1
+    }
+
+    if in-subsection and type(child) == content and child.func() == enum.item {
+      let fields = child.fields()
+      let item-number = fields.at("number", default: auto)
+      let number = if item-number == auto { next-number } else { item-number }
+      let label = fields.at("label", default: none)
+      child = enum.item(number, child.body)
+      if label != none {
+        child = touyingpkg.utils.label-it(child, label)
+      }
+      next-number = number + 1
+    }
+
+    result.push(child)
+  }
+
+  result.sum(default: none)
+}
+
 #let _sdu-background(self) = align(
   left + bottom,
   image(
@@ -448,5 +482,5 @@
     ..args,
   )
 
-  body
+  _sdu-continue-enums(body)
 }
