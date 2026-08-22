@@ -12,6 +12,13 @@
 #let sdu-equation-row-gap = 2.25em
 #let sdu-equation-body-gap = 1.75em
 
+// A row holding nothing but math spacing renders as an invisible line that
+// still consumes a full row gap. `$ a \ b \ $` — a trailing `\` before the
+// closing delimiter — is the common source of one.
+#let _sdu-space-func = [ ].func()
+
+#let _sdu-row-is-blank(row) = row.all(child => child.func() == _sdu-space-func)
+
 // Typst lays out a multiline block equation as one unbreakable object. On a
 // slide, a tall equation can therefore run past the page and lose its trailing
 // lines. Split only top-level math line breaks into grid rows so the equation
@@ -31,18 +38,53 @@
     }
   }
   rows.push(row)
+
+  // Drop the blank rows a stray leading or trailing `\` introduces, but keep
+  // interior ones: those are the author asking for vertical space.
+  while rows.len() > 0 and _sdu-row-is-blank(rows.first()) {
+    rows = rows.slice(1)
+  }
+  while rows.len() > 0 and _sdu-row-is-blank(rows.last()) {
+    rows = rows.slice(0, -1)
+  }
   rows
 }
 
-#let _sdu-equation-alignment(row) = {
-  let explicit = row.position(child => repr(child) == "align-point()")
-  if explicit != none {
-    return (explicit, explicit + 1)
+// LaTeX's `\thickmuskip`, the space a relation normally gets on either side.
+// Splitting a row at the relation drops the space that preceded it — the left
+// half's trailing space is trimmed at the column edge — so it has to be put
+// back explicitly, inside the fitted equation so it scales with the row.
+#let sdu-equation-relation-space = 0.278em
+
+// `math.align-point` is not exported, so derive the element function from a
+// throwaway `$&$` instead of matching on `repr()`. A repr comparison would keep
+// compiling but silently stop aligning anything if Typst ever reformats it.
+#let _sdu-align-point-func = $&$.body.func()
+
+// Split a row into the cells that share an alignment axis. Every `&` starts a
+// new cell, so `a &= b &= c` aligns on both relations the way LaTeX's `align`
+// does; earlier only the first `&` was honoured and the rest vanished. Rows
+// without any `&` fall back to their first `=`.
+#let _sdu-equation-cells(row) = {
+  let points = row
+    .enumerate()
+    .filter(((index, child)) => child.func() == _sdu-align-point-func)
+    .map(((index, child)) => index)
+
+  if points.len() > 0 {
+    let cells = ()
+    let start = 0
+    for point in points {
+      cells.push(row.slice(start, point))
+      start = point + 1
+    }
+    cells.push(row.slice(start))
+    return cells
   }
 
   let equality = row.position(child => child.has("text") and child.text == "=")
   if equality != none {
-    (equality, equality)
+    (row.slice(0, equality), row.slice(equality))
   } else {
     none
   }
@@ -63,26 +105,47 @@
   body,
 )
 
+// Splitting an equation into rows replaces the original element, so Typst no
+// longer paints its number even though the equation counter has already been
+// stepped and `@refs` to it still resolve. Reproduce the number by hand so the
+// printed tag and the reference agree.
+#let _sdu-equation-number(equation) = {
+  if equation.numbering == none {
+    return none
+  }
+  context numbering(equation.numbering, ..counter(math.equation).get())
+}
+
 #let _sdu-display-equation(equation) = {
   let rows = _sdu-equation-rows(equation.body)
 
-  if rows.len() == 1 {
+  // `<= 1` rather than `== 1`: trimming blank rows can empty the list, and an
+  // equation made only of line breaks still has to render as itself.
+  if rows.len() <= 1 {
     align(center, _sdu-fit-equation(equation))
   } else {
+    let number = _sdu-equation-number(equation)
     let parsed = rows.map(row => {
-      let alignment = _sdu-equation-alignment(row)
-      if alignment == none {
-        (body: row, left: none, right: none)
+      let cells = _sdu-equation-cells(row)
+      if cells == none {
+        (body: row, cells: none)
       } else {
-        let (left-end, right-start) = alignment
         (
           body: row,
-          left: row.slice(0, left-end),
-          right: row.slice(right-start),
+          // Every cell after the first opens with the relation it aligns on, so
+          // it needs the space that the split removed.
+          cells: cells
+            .enumerate()
+            .map(((index, cell)) => if index == 0 {
+              cell
+            } else {
+              (h(sdu-equation-relation-space),) + cell
+            }),
         )
       }
     })
-    let aligned-row-count = parsed.filter(row => row.left != none).len()
+    let aligned-rows = parsed.filter(row => row.cells != none)
+    let column-count = calc.max(2, ..aligned-rows.map(row => row.cells.len()))
 
     let chunks = ()
     let chunk = ()
@@ -110,28 +173,43 @@
         {
           v(sdu-equation-body-gap)
           for (row-index, row) in chunk.enumerate() {
+            let is-last-row = chunk-index == chunks.len() - 1 and row-index == chunk.len() - 1
             block(
               width: 100%,
               breakable: false,
               below: if row-index == chunk.len() - 1 { 0pt } else { sdu-equation-row-gap },
-              if row.left == none {
-                align(center, _sdu-fit-equation(_sdu-row-equation(row.body)))
-              } else if aligned-row-count == 1 {
-                // With no second equality to align against, keep the expression
-                // as one unit. This gives a long RHS the full slide width and
-                // scales both sides by exactly the same amount.
-                align(center, _sdu-fit-equation(_sdu-row-equation(row.body)))
-              } else {
-                grid(
-                  // Keep one shared alignment axis while leaving enough room
-                  // for the usually longer right-hand side of derivations.
-                  columns: (40%, 60%),
-                  column-gutter: 0pt,
-                  // Horizontal alignment only: `horizon` would collapse the
-                  // row height for fractions, products, and large sums.
-                  align(right, _sdu-fit-equation(_sdu-row-equation(row.left))),
-                  align(left, _sdu-fit-equation(_sdu-row-equation(row.right))),
-                )
+              {
+                // The tag rides along with the closing row, matching where
+                // Typst puts it for an unsplit block equation.
+                if is-last-row and number != none {
+                  place(right + horizon, number)
+                }
+                if row.cells == none or aligned-rows.len() == 1 {
+                  // Nothing to align against — with a single aligned row there
+                  // is no second axis either — so keep the expression as one
+                  // unit. This gives a long RHS the full slide width and scales
+                  // both sides by exactly the same amount.
+                  align(center, _sdu-fit-equation(_sdu-row-equation(row.body)))
+                } else {
+                  grid(
+                    // Keep one shared alignment axis while leaving enough room
+                    // for the usually longer right-hand side of derivations.
+                    // Extra `&` columns are sized to their content so a third
+                    // alignment point sits next to the second, not half a slide
+                    // away; the last column still absorbs the remaining width.
+                    columns: (40%,) + (auto,) * (column-count - 2) + (1fr,),
+                    column-gutter: 0pt,
+                    // Horizontal alignment only: `horizon` would collapse the
+                    // row height for fractions, products, and large sums.
+                    ..row
+                      .cells
+                      .enumerate()
+                      .map(((index, cell)) => align(
+                        if index == 0 { right } else { left },
+                        _sdu-fit-equation(_sdu-row-equation(cell)),
+                      )),
+                  )
+                }
               },
             )
           }
@@ -153,28 +231,40 @@
 #let _display-page-heading(self) = {
   let last-heading-label = _get-last-heading-label(self.headings)
   touyingpkg.utils.display-current-heading(
-    depth: if last-heading-label == "touying:hidden" { self.slide-level - 1 } else { self.slide-level },
+    // A hidden heading means the title comes from one level up, but `depth: 0`
+    // matches nothing and would leave the header blank on a `slide-level: 1`
+    // deck, so never go below the top level.
+    depth: if last-heading-label == "touying:hidden" {
+      calc.max(1, self.slide-level - 1)
+    } else {
+      self.slide-level
+    },
     style: none,
   )
 }
 
 // Typst turns ordered-list items separated by other block content into
 // independent lists, so each fragment normally starts at 1. Give top-level
-// items explicit numbers within each second-level heading. Nested items remain
-// local to their parent list, and an explicitly numbered item is preserved.
+// items explicit numbers that carry across the interruption, restarting at
+// every heading. Nested items remain local to their parent list, and an
+// explicitly numbered item is preserved.
+//
+// The restart point used to be second-level headings only, which meant decks
+// built from `=` headings alone — or lists sitting under a `===` — never got
+// continued numbering at all.
 #let _sdu-continue-enums(body) = {
   let children = if touyingpkg.utils.is-sequence(body) { body.children } else { (body,) }
-  let in-subsection = false
+  let in-section = false
   let next-number = 1
   let result = ()
 
   for child in children {
-    if type(child) == content and child.func() == heading and child.depth <= 2 {
-      in-subsection = child.depth == 2
+    if type(child) == content and child.func() == heading {
+      in-section = true
       next-number = 1
     }
 
-    if in-subsection and type(child) == content and child.func() == enum.item {
+    if in-section and type(child) == content and child.func() == enum.item {
       let fields = child.fields()
       let item-number = fields.at("number", default: auto)
       let number = if item-number == auto { next-number } else { item-number }
@@ -225,7 +315,13 @@
   set align(bottom)
   set text(size: 0.72em, fill: self.colors.neutral-dark.lighten(30%))
   show: pad.with(x: 0.8em, bottom: 0.45em)
-  align(right, context touyingpkg.utils.slide-counter.display() + " / " + touyingpkg.utils.last-slide-number)
+  // Read what the theme's `footer-right` argument put in the store instead of
+  // hard-coding the counter, otherwise the argument silently does nothing.
+  let footer-right = self.store.at(
+    "footer-right",
+    default: context touyingpkg.utils.slide-counter.display() + " / " + touyingpkg.utils.last-slide-number,
+  )
+  align(right, touyingpkg.utils.call-or-display(self, footer-right))
 }
 
 #let slide(
@@ -261,9 +357,11 @@
   extra: none,
   ..args,
 ) = touying-slide-wrapper(self => {
+  // `args` only feeds `info`, so a positional argument would be dropped without
+  // a word. Touying's own `config-*` helpers assert the same way.
+  assert(args.pos().len() == 0, message: "title-slide takes no positional arguments")
   self = touyingpkg.utils.merge-dicts(
     self,
-    config,
     config-common(freeze-slide-counter: true),
     config-page(margin: (top: 1.2cm, bottom: 1.2cm, x: 1.6cm)),
   )
@@ -310,10 +408,16 @@
       v(1fr)
     })
   }
-  touying-slide(self: self, body)
+  // Forward `config` the way the other slide helpers do, instead of folding it
+  // into `self` here and dropping it on the floor.
+  touying-slide(self: self, config: config, body)
 })
 
-#let outline-slide(config: (:), title: [目录], ..args) = touying-slide-wrapper(self => {
+// `title` defaults to `none` because the red sidebar already identifies the
+// slide; it used to default to `[目录]` and then be ignored outright, so passing
+// a heading had no effect at all.
+#let outline-slide(config: (:), title: none, ..args) = touying-slide-wrapper(self => {
+  assert(args.pos().len() == 0, message: "outline-slide takes no positional arguments")
   self = touyingpkg.utils.merge-dicts(
     self,
     config-common(freeze-slide-counter: true),
@@ -349,14 +453,12 @@
         #set par(leading: 2.18em)
         #show outline.entry.where(level: 1): set block(above: 0.42em, below: 0.84em)
         #show outline.entry.where(level: 2): set block(above: 0.14em, below: 0.58em)
-        #columns(1)[
-          #outline(
-            title: none,
-            depth: self.slide-level,
-            indent: 0.75em,
-            ..args,
-          )
-        ]
+        #outline(
+          title: title,
+          depth: self.slide-level,
+          indent: 0.75em,
+          ..args,
+        )
       ],
     ),
     )
@@ -364,12 +466,17 @@
   touying-slide(self: self, config: config, body)
 })
 
+// The section slide is a title-only divider, so it deliberately ignores the
+// positional body touying hands to it. `receive-body-for-new-section-slide-fn`
+// is disabled in the theme, which makes touying emit the content that follows a
+// first-level heading as an ordinary slide instead of passing it here — without
+// that config, everything written before the first `==` would be dropped.
 #let new-section-slide(config: (:), body) = touying-slide-wrapper(self => {
   self = touyingpkg.utils.merge-dicts(
     self,
     config-page(margin: (top: 1.1cm, bottom: 1.1cm, x: 1.6cm)),
   )
-  let body = {
+  let layout = {
     set page(background: _sdu-background(self))
     set align(left + horizon)
     block(width: 100%, height: 100%, {
@@ -380,10 +487,15 @@
       v(1fr)
     })
   }
-  touying-slide(self: self, config: config, body)
+  touying-slide(self: self, config: config, layout)
 })
 
-#let end-slide(config: (:), body: auto) = touying-slide-wrapper(self => {
+// Accepts the closing content either positionally (`#end-slide[...]`, matching
+// how the other slide helpers read) or as `body:`.
+#let end-slide(config: (:), body: auto, ..args) = touying-slide-wrapper(self => {
+  assert(args.pos().len() <= 1, message: "end-slide takes at most one positional argument")
+  assert(args.named().len() == 0, message: "end-slide got unexpected named arguments: " + repr(args.named()))
+  let body = args.pos().at(0, default: body)
   self = touyingpkg.utils.merge-dicts(
     self,
     config-common(freeze-slide-counter: true, new-section-slide-fn: none),
@@ -448,6 +560,11 @@
     config-common(
       slide-fn: slide,
       new-section-slide-fn: new-section-slide,
+      // `new-section-slide` is a title-only divider. Letting it receive the body
+      // would silently swallow every block written between a `=` heading and the
+      // first `==` below it; with this off, touying turns that content into a
+      // regular slide of its own.
+      receive-body-for-new-section-slide-fn: false,
     ),
     config-methods(
       init: (self: none, body) => {
