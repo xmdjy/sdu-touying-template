@@ -1,8 +1,8 @@
-# SDU-Touying-Template
+# sdu-touying-template
 
 基于 Touying 的山东大学风格学术演示文稿，支持中文排版、目录、红色列表标记、三线表、数学公式、代码与作者—年份引用。
 
-展示名称为 **SDU-Touying-Template**，拟提交的包标识为 **`SDU-Touying-Template`**。这是社区维护的非官方模板，尚未发布到 Typst Universe。
+展示名称为 **sdu-touying-template**，拟提交的包标识为 **`sdu-touying-template`**。这是社区维护的非官方模板，尚未发布到 Typst Universe。
 
 ![封面](assets/1.png)
 
@@ -13,21 +13,21 @@
 需要 Typst 0.14.2 或更新版本。在仓库根目录注册本地开发包并编译：
 
 ```sh
-mkdir -p .typst/packages/preview/SDU-Touying-Template
-ln -s "$PWD" .typst/packages/preview/SDU-Touying-Template/0.1.0
+mkdir -p .typst/packages/preview/sdu-touying-template
+ln -s "$PWD" .typst/packages/preview/sdu-touying-template/0.1.0
 typst compile --package-path .typst/packages template/example.typ template/example.pdf
 ```
 
 软链接只需建立一次。修改 [template/example.typ](template/example.typ) 后重新执行编译命令即可；[references.bib](template/references.bib) 是配套文献数据。[查看完整示例 PDF](template/example.pdf)。首次编译需要联网获取已发布的依赖。
 
-预备发布标识已明确为 `SDU-Touying-Template`。它包含大写字母，与官方要求的 `kebab-case` 命名规则不一致；本地可用不代表官方审核会接受该名称。
+预备发布名称统一为 `sdu-touying-template`，包导入、清单和文档均使用小写名称。
 
 ### 发布后的使用方式
 
 以下命令需等待包正式发布后使用：
 
 ```sh
-typst init @preview/SDU-Touying-Template:0.1.0 my-slides
+typst init @preview/sdu-touying-template:0.1.0 my-slides
 cd my-slides
 typst compile example.typ
 ```
@@ -36,7 +36,7 @@ typst compile example.typ
 
 ```typst
 #import "@preview/touying:0.6.1": *
-#import "@preview/SDU-Touying-Template:0.1.0": *
+#import "@preview/sdu-touying-template:0.1.0": *
 
 #show: sdu-theme.with(config-info(
   title: [报告标题],

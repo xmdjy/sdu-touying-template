@@ -1,5 +1,5 @@
 [package]
-name = "SDU-Touying-Template"
+name = "sdu-touying-template"
 version = "0.1.0"
 entrypoint = "lib.typ"
 authors = ["xmdjy <@xmdjy>"]
