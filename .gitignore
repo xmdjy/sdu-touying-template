@@ -18,3 +18,8 @@
 
 /source/
 /workspace/
+
+# Local agent state and release staging
+.qoder/
+.qorder/
+/dist/

@@ -282,13 +282,41 @@
   result.sum(default: none)
 }
 
-#let _sdu-background(self) = align(
-  left + bottom,
-  image(
-    "image/sdu_bg.png",
-    width: if self.show-notes-on-second-screen == right { 50% } else { 100% },
-  ),
-)
+#let sdu-footer-height = 0.95cm
+
+// Full-width bar along the bottom of every slide: author | title | page.
+#let _sdu-footer-bar(self) = {
+  let info = self.info
+  let footer-right = self.store.at(
+    "footer-right",
+    default: context str(touyingpkg.utils.slide-counter.get().first() + 1) + " / " + touyingpkg.utils.last-slide-number,
+  )
+  let title = if info.at("short-title", default: auto) not in (auto, none) { info.short-title } else { info.title }
+  block(
+    width: 100%,
+    height: sdu-footer-height,
+    fill: self.colors.primary,
+    inset: (x: 0.55cm),
+    {
+      set text(size: 11pt, weight: "bold", fill: self.colors.neutral-lightest)
+      set par(justify: false)
+      grid(
+        columns: (1fr, 2fr, 1fr),
+        align: (left + horizon, center + horizon, right + horizon),
+        rows: 100%,
+        if info.author != none { info.author },
+        if title != none { title },
+        touyingpkg.utils.call-or-display(self, footer-right),
+      )
+    },
+  )
+}
+
+#let _sdu-background(self) = {
+  let width = if self.show-notes-on-second-screen == right { 50% } else { 100% }
+  place(left + bottom, image("image/sdu_bg.png", width: width))
+  place(left + bottom, block(width: width, _sdu-footer-bar(self)))
+}
 
 #let sdu-header(self) = {
   set align(top)
@@ -305,24 +333,13 @@
         fill: self.colors.neutral-darkest,
         _display-page-heading(self),
       )),
-      align(right + horizon, image("image/sdu_around_logo.jpg", height: 2.52cm)),
+      align(right + horizon, image("image/sdu_logo.svg", height: 2.52cm)),
     ),
     align(left, line(length: 100%, stroke: (paint: self.colors.primary, thickness: 1.05pt))),
   )
 }
 
-#let sdu-footer(self) = {
-  set align(bottom)
-  set text(size: 0.72em, fill: self.colors.neutral-dark.lighten(30%))
-  show: pad.with(x: 0.8em, bottom: 0.45em)
-  // Read what the theme's `footer-right` argument put in the store instead of
-  // hard-coding the counter, otherwise the argument silently does nothing.
-  let footer-right = self.store.at(
-    "footer-right",
-    default: context touyingpkg.utils.slide-counter.display() + " / " + touyingpkg.utils.last-slide-number,
-  )
-  align(right, touyingpkg.utils.call-or-display(self, footer-right))
-}
+#let sdu-footer(self) = none
 
 #let slide(
   config: (:),
@@ -333,7 +350,7 @@
 ) = touying-slide-wrapper(self => {
   let self = touyingpkg.utils.merge-dicts(
     self,
-    config-page(header: sdu-header, footer: sdu-footer, margin: (top: 4.4em, bottom: 2.1em, left: 1.72cm, right: 1.45cm)),
+    config-page(header: sdu-header, footer: sdu-footer, margin: (top: 4.4em, bottom: 1.6cm, left: 1.72cm, right: 1.45cm)),
   )
   touying-slide(
     self: self,
@@ -362,50 +379,46 @@
   assert(args.pos().len() == 0, message: "title-slide takes no positional arguments")
   self = touyingpkg.utils.merge-dicts(
     self,
-    config-common(freeze-slide-counter: true),
-    config-page(margin: (top: 1.2cm, bottom: 1.2cm, x: 1.6cm)),
+    config-common(),
+    config-page(margin: (top: 0.8cm, bottom: 1.3cm, x: 1.6cm)),
   )
   let info = self.info + args.named()
   let body = {
     set page(background: _sdu-background(self))
-    place(top + right, dx: -0.2cm, dy: 0.15cm, image("image/sdu_around_logo.jpg", height: 2.6cm))
     set align(center + horizon)
-    block(width: 130%, height: 100%, {
-      v(0.9fr)
+    block(width: 100%, height: 100%, {
+      v(1fr)
       block(
-        width: 63%,
-        inset: (x: 1.2cm, y: 0.95cm),
-        fill: rgb("#6E1A1A"),
+        width: 88%,
+        inset: (x: 1.2cm, y: 0.7cm),
+        fill: self.colors.primary,
         radius: 8pt,
-        text(
-          size: if info.subtitle == none { 2.05em } else { 1.78em },
-          fill: self.colors.neutral-lightest,
-          weight: "bold",
-          info.title,
-        )
-          + (
-            if info.subtitle != none {
-              linebreak()
-              v(0.25em)
-              text(size: 1.02em, fill: self.colors.neutral-lightest, info.subtitle)
-            }
-          ),
+        {
+          set par(justify: false, leading: 0.6em)
+          text(size: 1.9em, fill: self.colors.neutral-lightest, info.title)
+          if info.subtitle != none {
+            v(0.2em)
+            text(size: 1.15em, fill: self.colors.neutral-lightest, info.subtitle)
+          }
+        },
       )
-      v(0.65cm)
-      set text(size: 1.12em, fill: self.colors.neutral-darkest)
+      v(0.8fr)
+      set text(size: 1.1em, fill: self.colors.neutral-darkest)
       if info.author != none {
         block(spacing: 0.5em, info.author)
       }
+      if extra != none {
+        block(spacing: 0.5em, extra)
+      }
       if info.institution != none {
-        block(spacing: 1.2em, info.institution)
+        block(above: 1.1em, text(size: 0.85em, info.institution))
       }
       if info.date != none {
-        block(spacing: 1.2em, touyingpkg.utils.display-info-date(self))
+        block(above: 1.1em, touyingpkg.utils.display-info-date(self))
       }
-      if extra != none {
-        block(spacing: 0.6em, extra)
-      }
-      v(1fr)
+      v(0.8fr)
+      image("image/sdu_logo.svg", height: 3.2cm)
+      v(0.6fr)
     })
   }
   // Forward `config` the way the other slide helpers do, instead of folding it
@@ -413,55 +426,45 @@
   touying-slide(self: self, config: config, body)
 })
 
-// `title` defaults to `none` because the red sidebar already identifies the
-// slide; it used to default to `[目录]` and then be ignored outright, so passing
-// a heading had no effect at all.
+// Lists only first-level headings, each behind a numbered red disc.
 #let outline-slide(config: (:), title: none, ..args) = touying-slide-wrapper(self => {
   assert(args.pos().len() == 0, message: "outline-slide takes no positional arguments")
   self = touyingpkg.utils.merge-dicts(
     self,
-    config-common(freeze-slide-counter: true),
-    config-page(margin: (top: 2.4cm, bottom: 1.1cm, left: 1.2cm, right: 1.45cm), footer: sdu-footer),
+    config-common(),
+    config-page(margin: (top: 1.4cm, bottom: 1.6cm, left: 2.2cm, right: 1.45cm)),
+  )
+  let marker(n) = box(
+    circle(radius: 0.62em, fill: self.colors.primary, inset: 0pt, align(center + horizon, text(
+      size: 0.8em,
+      top-edge: "bounds",
+      bottom-edge: "bounds",
+      fill: self.colors.neutral-lightest,
+      str(n),
+    ))),
   )
   let body = {
-    set page(background: [
-      #place(
-        top + left,
-        block(
-          width: 4.2cm,
-          height: 100%,
-          fill: rgb("#C91F25"),
-          radius: 8pt,
-          inset: 0pt,
-          clip: true,
-          [
-            #place(center + horizon, dx: 0.28cm, image("image/sdu_slide_logo_trans.svg", width: 2.55cm, height: 94%))
-          ],
-        ),
-      )
-    ])
-    grid(
-    columns: (2.55cm, 0.75cm, 1fr),
-    column-gutter: 8pt,
-    [],
-    [],
-    block(
-      width: 100%,
-      [
-        #v(3.45em)
-        #set text(fill: self.colors.neutral-darkest, size: 1.12em)
-        #set par(leading: 2.18em)
-        #show outline.entry.where(level: 1): set block(above: 0.42em, below: 0.84em)
-        #show outline.entry.where(level: 2): set block(above: 0.14em, below: 0.58em)
-        #outline(
-          title: title,
-          depth: self.slide-level,
-          indent: 0.75em,
-          ..args,
-        )
-      ],
-    ),
-    )
+    set page(background: _sdu-background(self))
+    set align(left + horizon)
+    if title != none {
+      text(size: 1.4em, weight: "bold", fill: self.colors.primary, title)
+      v(1em)
+    }
+    context {
+      let sections = query(heading.where(level: 1)).filter(h => not (
+        h.has("label") and str(h.label).starts-with("touying:")
+      ))
+      set text(size: 1.4em, fill: self.colors.primary)
+      show link: set text(fill: self.colors.primary)
+      for (i, sec) in sections.enumerate() {
+        block(above: 1.1em, below: 1.1em, link(sec.location(), grid(
+          columns: (auto, auto),
+          column-gutter: 0.8em,
+          align: left + horizon,
+          marker(i + 1), sec.body,
+        )))
+      }
+    }
   }
   touying-slide(self: self, config: config, body)
 })
@@ -498,32 +501,24 @@
   let body = args.pos().at(0, default: body)
   self = touyingpkg.utils.merge-dicts(
     self,
-    config-common(freeze-slide-counter: true, new-section-slide-fn: none),
+    config-common(new-section-slide-fn: none),
     config-page(margin: (top: 1.4cm, bottom: 1.4cm, x: 1.6cm)),
   )
   let final-body = if body == auto {
     [
       #set align(center + horizon)
       #set text(fill: self.colors.primary)
-      #text(size: 2.45em, weight: "bold")[感谢聆听]
+      #text(size: 2.8em, weight: "bold")[感谢聆听]
       #linebreak()
       #v(0.25em)
-      #text(font: "Libertinus Serif", size: 1.89em)[Thanks for Listening]
+      #text(font: ("XCharter", "Charter"), size: 1.85em, box[Thanks for Listening])
     ]
   } else {
     body
   }
   let layout = {
     set page(background: _sdu-background(self))
-    block(
-      width: 75%,
-      grid(
-        columns: (42%, 1fr),
-        column-gutter: 1.42cm,
-        align(center + horizon, image("image/sdu_ud_logo.png", width: 122%)),
-        align(center + horizon, block(width: 100%, align(center + horizon, final-body))),
-      ),
-    )
+    block(width: 100%, align(center + horizon, final-body))
   }
   touying-slide(self: self, config: config, align(center + horizon, layout))
 })
@@ -531,18 +526,13 @@
 #let sdu-theme(
   aspect-ratio: "16-9",
   font: (
-    "Libertinus Serif",
-    "Times New Roman",
-    "KaiTi",
-    "Kaiti SC",
-    "STKaiti",
-    "AR PL UKai CN",
-    "Noto Serif CJK SC",
-    "Source Han Serif SC",
+    "XCharter",
+    "Charter",
     "Songti SC",
-    "SimSun",
+    "FandolSong",
   ),
-  footer-right: context touyingpkg.utils.slide-counter.display() + " / " + touyingpkg.utils.last-slide-number,
+  mono-font: ("Maple Mono", "Menlo", "DejaVu Sans Mono"),
+  footer-right: context str(touyingpkg.utils.slide-counter.get().first() + 1) + " / " + touyingpkg.utils.last-slide-number,
   primary: rgb("#8C1D1D"),
   ..args,
   body,
@@ -569,11 +559,38 @@
     config-methods(
       init: (self: none, body) => {
         set text(font: font)
+        show raw: set text(font: mono-font)
         show: codly-init.with()
         show: show-cn-fakebold
         show: show-cn-fakeitalic
         show heading: set text(self.colors.primary)
-        show link: set text(fill: blue)
+        // External links use a typewriter face; citations retain the body face.
+        show link: set text(fill: rgb("#50658A"))
+        show link: it => {
+          if type(it.dest) == str {
+            text(font: mono-font, it)
+          } else {
+            it
+          }
+        }
+        set bibliography(style: "apa")
+        show cite: set text(fill: rgb("#50658A"), font: font)
+        set list(marker: text(fill: self.colors.primary)[•])
+        show enum: set text(top-edge: "bounds", bottom-edge: "bounds")
+        set enum(number-align: right + horizon, numbering: n => move(dy: -0.12em, box(
+          circle(
+            radius: 0.48em,
+            inset: 0pt,
+            fill: self.colors.primary,
+            align(center + horizon, text(
+              size: 0.68em,
+              top-edge: "bounds",
+              bottom-edge: "bounds",
+              fill: self.colors.neutral-lightest,
+              str(n),
+            )),
+          ),
+        )))
         show raw.where(block: false): code => box(
           fill: rgb("#eff1f3"),
           inset: (x: 0.35em, y: 0.15em),
@@ -581,7 +598,22 @@
           text(size: 0.85em, fill: rgb("#24292f"), code),
         )
         show math.equation.where(block: true): _sdu-display-equation
-        codly(languages: codly-languages)
+        // Three-line (booktabs-style) tables with a red caption label on top.
+        set table(stroke: (_, y) => if y == 1 { (top: 0.6pt) } else { none }, align: left)
+        show table: t => block(stroke: (y: 0.9pt), t)
+        show figure.where(kind: table): set figure(gap: 0.9em)
+        show figure.where(kind: table): set figure.caption(position: top)
+        show figure.caption: it => {
+          text(fill: self.colors.primary, it.supplement + [ ] + context it.counter.display(it.numbering) + it.separator)
+          it.body
+        }
+        codly(
+          languages: codly-languages,
+          number-format: none,
+          zebra-fill: none,
+          fill: luma(245),
+        )
+        show raw.where(block: true): it => align(center, block(width: 90%, align(left, it)))
         body
       },
       alert: touyingpkg.utils.alert-with-primary-color,
