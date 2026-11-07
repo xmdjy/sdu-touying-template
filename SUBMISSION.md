@@ -13,7 +13,7 @@
 - `.qoder/`、`.qorder/` 已由 Git 和包清单忽略，未删除本地会话。
 - 五张预览从本次文稿重新生成，并按标题查询页码，避免页面增删导致错配。
 - 缩略图 1684×947、960697 字节，小于官方 3 MiB 上限。
-- 预览图和 PDF 已从下载包排除，README 和 LICENSE 保留。
+- 预览图和 PDF 统一放入 `assets/` 并从下载包排除；`template/` 中不再包含编译产物。README 和 LICENSE 保留。
 - README 本地链接及源码差异空白检查通过。
 
 提交候选目录：`dist/packages/preview/sdu-touying-template/0.1.0`。
