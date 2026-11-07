@@ -6,8 +6,8 @@
 ## 已验证
 
 - `typst.toml` 入口、模板目录、版本、分类、MIT 许可文件和仓库链接。
-- 模板使用包导入，不再使用 `../lib.typ`；保留用户更名后的 `example.typ`。
-- 在临时包目录运行 `typst init`，初始化仅生成 `example.typ` 和 `references.bib`。
+- 模板使用包导入，不再使用 `../lib.typ`；保留用户更名后的 `main.typ`。
+- 在临时包目录运行 `typst init`，初始化仅生成 `main.typ` 和 `references.bib`。
 - 初始化后的独立项目使用 Typst 0.15.0 编译成功；运行图片路径正确。
 - 运行时仅保留两张素材；校徽 SVG 减少坐标精度，页眉封面共用。
 - `.qoder/`、`.qorder/` 已由 Git 和包清单忽略，未删除本地会话。
@@ -46,7 +46,7 @@
 
 ```sh
 typst init --package-path .typst/packages @preview/sdu-touying-template:0.1.0 /tmp/sdu-check-project
-typst compile --package-path .typst/packages /tmp/sdu-check-project/example.typ /tmp/sdu-check-project/example.pdf
+typst compile --package-path .typst/packages /tmp/sdu-check-project/main.typ /tmp/sdu-check-project/example.pdf
 ```
 
 初始化目标目录应为尚不存在的新目录。当前候选目录已同步新包名、图片路径和生成文件。
