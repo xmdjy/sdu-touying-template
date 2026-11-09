@@ -8,7 +8,21 @@
 
 ## 快速开始
 
-### 使用方式
+### 下载 Release ZIP 使用
+
+无需等待 Typst Universe 上架，可从 [v0.1.0 Release](https://github.com/xmdjy/sdu-smpl-slides/releases/tag/v0.1.0) 下载 **`sdu-smpl-slides-v0.1.0.zip`** 源码包。安装 Typst **0.15.0 或更高版本**，解压后编译：
+
+```sh
+unzip sdu-smpl-slides-v0.1.0.zip
+cd sdu-smpl-slides-v0.1.0
+typst compile main.typ
+```
+
+打开生成的 `main.pdf` 预览，修改根目录的 `main.typ` 编写自己的报告，文献条目放在同目录的 `references.bib` 中。该附件已附带使用本地 `#import "lib.typ": *` 的入口，同时保留原始 `template/` 和主题源码；请保留 `lib.typ` 与 `image/` 的相对位置。首次编译仍需联网下载 Touying 等依赖，字体要求见下文。
+
+上述步骤适用于 Release 的同名附件；GitHub 自动生成的 **Source code (zip)** 仅包含仓库原始文件，不含额外生成的根目录入口。
+
+### 通过 Typst Universe 使用
 
 以下命令需等待包正式发布后使用：
 
@@ -85,4 +99,4 @@ typst compile main.typ
 
 ## 致谢
 
-基于 [Touying](https://github.com/touying-typ/touying) 构建，参考 [touying-sjtu](https://github.com/sjtug/touying-sjtu) 的视觉与实现思路。问题和建议请提交到[项目 Issues](https://github.com/xmdjy/sdu-touying-template/issues)。
+基于 [Touying](https://github.com/touying-typ/touying) 构建，参考 [touying-sjtu](https://github.com/sjtug/touying-sjtu) 的视觉与实现思路。问题和建议请提交到[项目 Issues](https://github.com/xmdjy/sdu-smpl-slides/issues)。
