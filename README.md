@@ -1,16 +1,28 @@
 # sdu-smpl-slides
 
-基于 Touying 的山东大学风格学术演示文稿，支持中文排版、目录、红色列表标记、三线表、数学公式、代码与作者—年份引用。
+基于 Touying 的山东大学风格beamer，支持中文排版、目录、红色列表标记、三线表、数学公式、代码与作者—年份引用。
 
-展示名称为 **sdu-smpl-slides**，拟提交的包标识为 **`sdu-smpl-slides`**。这是社区维护的非官方模板，尚未发布到 Typst Universe。
+**sdu-smpl-slides 0.1.0** 已发布到 [Typst Universe](https://typst.app/universe/package/sdu-smpl-slides/)，包标识为 **`@preview/sdu-smpl-slides:0.1.0`**
 
 ![封面](assets/1.png)
 
 ## 快速开始
 
-### 使用方式
+### 下载 Release ZIP 使用
 
-以下命令需等待包正式发布后使用：
+你可从 [v0.1.0 Release](https://github.com/xmdjy/sdu-smpl-slides/releases/tag/v0.1.0) 下载 **`sdu-smpl-slides-v0.1.0.zip`** 源码包。安装 Typst **0.15.0 或更高版本**，解压后编译：
+
+```sh
+unzip sdu-smpl-slides-v0.1.0.zip
+cd sdu-smpl-slides-v0.1.0
+typst compile main.typ
+```
+
+打开生成的 `main.pdf` 预览，修改根目录的 `main.typ` 编写自己的报告，文献条目放在同目录的 `references.bib` 中。该附件已附带使用本地 `#import "lib.typ": *` 的入口，同时保留原始 `template/` 和主题源码；请保留 `lib.typ` 与 `image/` 的相对位置。首次编译仍需联网下载 Touying 等依赖，字体要求见下文。
+
+### 通过 Typst Universe 使用
+
+在 [Typst Universe 模板页面](https://typst.app/universe/package/sdu-smpl-slides/) 点击 **Create project in app**，即可在 Web 编辑器中创建项目；本地安装 Typst **0.15.0 或更高版本**后，也可运行：
 
 ```sh
 typst init @preview/sdu-smpl-slides:0.1.0 slides
@@ -85,4 +97,4 @@ typst compile main.typ
 
 ## 致谢
 
-基于 [Touying](https://github.com/touying-typ/touying) 构建，参考 [touying-sjtu](https://github.com/sjtug/touying-sjtu) 的视觉与实现思路。问题和建议请提交到[项目 Issues](https://github.com/xmdjy/sdu-touying-template/issues)。
+基于 [Touying](https://github.com/touying-typ/touying) 构建，参考 [touying-sjtu](https://github.com/sjtug/touying-sjtu) 的视觉与实现思路。问题和建议请提交到[项目 Issues](https://github.com/xmdjy/sdu-smpl-slides/issues)。
